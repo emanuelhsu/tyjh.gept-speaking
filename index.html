@@ -34,7 +34,7 @@ label.ck{display:flex;gap:10px;align-items:flex-start;margin:6px 0;cursor:pointe
 audio{width:100%;margin-top:10px}
 .ref{background:var(--soft);border-radius:10px;padding:10px 14px;margin-top:10px}
 .bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px}.bar i{display:block;height:100%;background:var(--main);border-radius:3px}
-.inp{width:100%;font:inherit;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin-top:6px}.hello{display:flex;justify-content:space-between;align-items:center}a.btn{text-decoration:none;display:inline-block}.seg{margin:10px 0}.seg .btn{padding:8px 16px}.hide{display:none}
+.inp{width:100%;font:inherit;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin-top:6px}.hello{display:flex;justify-content:space-between;align-items:center}a.btn{text-decoration:none;display:inline-block}.seg{margin:10px 0}.seg .btn{padding:8px 16px}.sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px}.sets .choice{padding:12px 14px;text-align:center}.sets .choice.dn{border-color:var(--main);background:var(--soft)}.sets small{display:block;color:var(--mute);font-size:.8rem;line-height:1.3;margin-top:2px}.hide{display:none}
 </style>
 </head>
 <body>
@@ -45,11 +45,13 @@ audio{width:100%;margin-top:10px}
    prep=準備秒數, answer=作答秒數(題目可用 sec 覆蓋), plays=題目播放次數
    看圖題可加 img:"images/xxx.png" 使用真的圖片；沒有 img 時顯示 scene 的表情符號
    提醒：請使用自己原創的題目，不要放真題或出版社題本。 */
+const REP=["I am a student in Class Three.", "My father is a taxi driver.", "The books are on the desk.", "Are you ready for the test?", "She is not at home today.", "Where are your parents now?", "We are not late for school.", "Is this your umbrella or his?", "I go to school by bus every day.", "My brother plays basketball after class.", "She drinks a glass of milk every morning.", "We usually eat dinner at six.", "He does not like spicy food.", "Do you walk to school with your friends?", "My mother does not work on Sundays.", "What time does the movie start?", "My brother is playing basketball in the park.", "The children are singing in the classroom.", "I am waiting for the bus now.", "What are you doing right now?", "We visited our grandmother last Sunday.", "She watched a funny movie last night.", "I cleaned my room before dinner.", "They played baseball after school yesterday.", "I went to the night market with my family.", "He bought a new bike last week.", "We ate noodles for lunch yesterday.", "She saw her teacher at the library.", "I did not finish my homework last night.", "Did you see the doctor this morning?", "He did not come to class yesterday.", "Where did you go last weekend?", "I will clean my room tomorrow.", "It will rain this afternoon.", "She will call you after dinner.", "What will you do next Sunday?", "We are going to visit Taipei 101.", "He is going to take a bus to Taichung.", "I am going to buy a gift for my mom.", "Are you going to join the school trip?", "Can you help me with my homework?", "My sister can speak three languages.", "You should drink more water every day.", "Could you open the window, please?", "You must wear a helmet when you ride a bike.", "May I ask you a question?", "We should not run in the hallway.", "Students must be quiet in the library.", "What is your favorite subject at school?", "Who is the girl in the red dress?", "Why are you so happy today?", "How often do you exercise each week?", "There is a cat under the table.", "There are twenty students in my class.", "The post office is next to the bank.", "Is there a convenience store near here?", "My bag is bigger than yours.", "Summer is hotter than spring in Taiwan.", "This is the most interesting book I have read.", "He runs faster than all of his classmates.", "I always brush my teeth before bed.", "She sometimes takes the MRT to work.", "We have English class on Monday and Thursday.", "He never stays up late on school nights.", "That red bike is mine, not hers.", "Please give this letter to your teacher.", "Their house has a small garden.", "Our class won the singing contest.", "I want to be a doctor in the future.", "She likes reading comic books at night.", "He enjoys swimming with his cousins.", "We hope to see you again soon.", "I was tired, so I went to bed early.", "He likes tea, but he does not like coffee.", "We stayed home because it was raining.", "She studied hard and passed the test.", "Can I have a cup of hot tea, please?", "How much is this blue shirt?", "Excuse me, how can I get to the station?", "Thank you for inviting me to your party."];
+const SETNAMES="be動詞|be動詞問句與否定|現在簡單式|現在簡單式問句與否定|現在進行式|過去式（規則）|過去式（不規則）|過去式問句與否定|will 未來式|be going to|can / could|must / should / may|WH 問句|There is/are 與介系詞|比較級與最高級|頻率與時間|所有格與代名詞|want / like / enjoy|連接詞|日常用語";
 const DATA = {
  elementary:{name:"初級",desc:"基礎句型、簡短回答",tasks:{
   repeat:{name:"複誦",desc:"聽一句，馬上說一遍",mode:"listen",prep:0,answer:12,plays:1,showAfter:true,
    check:["句子完整，沒有漏字","語調自然"],
-   items:[{q:"I go to school by bus every day."},{q:"My brother is playing basketball in the park."},{q:"Can you help me with my homework?"},{q:"We will visit our grandmother next Sunday."}]},
+   names:SETNAMES,items:REP.map(q=>({q}))},
   read:{name:"朗讀",desc:"默讀後大聲念出短文",mode:"read",prep:30,answer:60,
    check:["發音清楚","在句號、逗號有停頓","念錯能繼續，不卡住"],
    items:[{t:"Tom lives in a small town. Every morning, he walks to school with his friend Amy. They like to talk about games and music."},{t:"Last Saturday, my family went to the zoo. We saw elephants, monkeys, and birds. I took many pictures and had a great day."}]},
@@ -75,6 +77,11 @@ const DATA = {
    items:[{scene:"🏢🚌🌧️ 🧑‍💼☂️ 🧑‍🎓📱",title:"下雨的公車站",qs:["Please describe what the people are doing at the bus stop.","What might happen next?","What do you usually do when it rains and you have to go out?"]},{scene:"📚🪑 👩‍🏫 🧑‍🎓🧑‍🎓 💻",title:"圖書館",qs:["Please describe the scene in the library.","Why do you think the students are working together?","Do you like studying in a library? Why or why not?"]}]}
  }}
 };
+
+/*BANK_START*/
+const BANK={"elementary":{"read":[{"t":"Tom lives in a small town. Every morning, he walks to school with his friend Amy. They like to talk about games and music."},{"t":"Last Saturday, my family went to the zoo. We saw elephants, monkeys, and birds. I took many pictures and had a great day."},{"t":"Amy has a small dog named Coco. Every afternoon, she takes Coco to the park. They run, play, and meet many other dogs."},{"t":"My school starts at eight o'clock. I eat breakfast at home and take the bus. After class, I play basketball with my classmates."},{"t":"It is raining today, so we cannot go to the beach. Instead, my family stays home and cooks noodles together. It is warm and fun."},{"t":"Mr. Lin is our English teacher. He is kind and funny. He often tells us stories, so we enjoy his class very much."},{"t":"Last night, I did my homework and read a book. Then I took a shower and went to bed at ten. Today I feel great."},{"t":"Lisa wants to be a nurse. She studies hard every day and helps her mother at home. Her family is proud of her."}],"qa":[{"q":"What do you usually eat for breakfast?","ref":"I usually eat an egg sandwich and drink milk.","sec":15},{"q":"Where did you go last weekend?","ref":"I went to the night market with my family.","sec":15},{"q":"What will you do tomorrow?","ref":"I will clean my room and then play basketball.","sec":15},{"q":"Who is your best friend?","ref":"My best friend is Amy. She is kind and funny.","sec":15},{"q":"What time do you get up on weekdays?","ref":"I get up at six thirty on weekdays.","sec":15},{"q":"What did you do yesterday evening?","ref":"I did my homework and watched TV.","sec":15},{"q":"What are you going to do this weekend?","ref":"I am going to visit my grandparents.","sec":15},{"q":"What is your favorite food?","ref":"My favorite food is beef noodles because they are tasty.","sec":15}],"pic":[{"title":"公園裡","scene":"🌳🧒⚽ 🐕 ☀️","qs":["What are the children doing?","What is the weather like?","Do you like playing in the park? Why?"]},{"title":"超市裡","scene":"🛒🍎🥛 👩 👦","qs":["Where are the woman and the boy?","What are they buying?","What do you usually buy at the supermarket?"]},{"title":"教室","scene":"🏫📚✏️ 👩‍🏫 🧒🧒","qs":["Where are the children?","What is the teacher doing?","Do you like your classroom? Why?"]},{"title":"海邊","scene":"🏖️🌊☀️ 🧒🏄 🍦","qs":["What can you see at the beach?","What is the boy doing?","What do you like to do at the beach?"]},{"title":"廚房","scene":"🍳🥚🥛 👩‍🍳 🧒","qs":["What is the woman cooking?","What is the child doing?","Can you cook? What can you cook?"]},{"title":"公車站","scene":"🚌🚏 🧓 👧🎒","qs":["Where are the people?","What is the girl carrying?","How do you go to school?"]},{"title":"生日派對","scene":"🎂🎈🎁 👧🧒👦","qs":["What are the children celebrating?","What is on the table?","How do you celebrate your birthday?"]},{"title":"下雨天","scene":"🌧️☔ 🧑‍🦱 🐱","qs":["What is the weather like?","What is the man holding?","What do you do on rainy days?"]}]},"intermediate":{"read":[{"t":"More and more people in big cities are choosing to ride bicycles to work. It is cheaper than taking a taxi, and it is also good for the environment. However, some riders worry about safety because there are not enough bike lanes in many areas."},{"t":"Learning a new language takes time, but it can open many doors. People who speak more than one language often find it easier to travel, make friends, and get better jobs. The key is to practice a little every day instead of studying for hours once a week."},{"t":"Many students today use their phones for study as well as for fun. They can look up words, watch short lessons, and join online groups. However, too much screen time can hurt their eyes and sleep, so it is important to take regular breaks."},{"t":"Taiwan is famous for its night markets, where visitors can enjoy cheap and delicious food. Popular snacks include fried chicken, bubble tea, and oyster omelets. Besides eating, many people like playing games and shopping for small gifts."},{"t":"Exercise is one of the best ways to stay healthy. You do not need to join an expensive gym; walking to work or climbing the stairs also helps. If you build a habit of moving every day, you will feel more energetic and sleep better."},{"t":"Recycling has become part of daily life in many cities. People separate paper, plastic, and glass before throwing them away. Although it takes extra effort, it reduces waste and protects the environment for the next generation."},{"t":"Volunteering gives people a chance to help others and learn new skills at the same time. Some students teach younger children, while others clean parks or visit elderly neighbors. Many of them say the experience makes them more confident."},{"t":"Online shopping is growing quickly because it is convenient. Customers can compare prices and receive goods at home within days. Still, some people prefer stores, since they can touch the products and get help from the staff."}],"qa":[{"q":"What do you usually do to relax after work or school?","ref":"I usually listen to music. It helps me forget stress from the day.","sec":15},{"q":"Do you prefer to study alone or with others?","ref":"I prefer studying with others because we can explain things to each other.","sec":15},{"q":"How do you usually go to work or school?","ref":"I take the MRT. It is fast and I can read on the way.","sec":15},{"q":"Some people think children should learn to cook. What do you think?","ref":"I agree. Cooking teaches children to be independent. For example, they can make simple meals when parents are busy. It is also a good way to spend time with family.","sec":30},{"q":"What was the most memorable trip you have ever taken?","ref":"My most memorable trip was to Hualien last summer. We hiked in Taroko Gorge and the views were amazing. I would love to go back again.","sec":30},{"q":"If you could change one thing about your town or city, what would it be?","ref":"I would build more parks. Right now there are few places for people to exercise or relax, especially for older people.","sec":30},{"q":"What kind of music do you enjoy listening to?","ref":"I enjoy pop music because it is cheerful and easy to sing along.","sec":15},{"q":"Do you think students should wear uniforms? Why or why not?","ref":"I think uniforms are a good idea. They make students equal and save time in the morning. However, some students feel they cannot express their own style.","sec":30}],"pic":[{"title":"下雨的公車站","scene":"🏢🚌🌧️ 🧑‍💼☂️ 🧑‍🎓📱","qs":["Please describe what the people are doing at the bus stop.","What might happen next?","What do you usually do when it rains and you have to go out?"]},{"title":"圖書館","scene":"📚🪑 👩‍🏫 🧑‍🎓🧑‍🎓 💻","qs":["Please describe the scene in the library.","Why do you think the students are working together?","Do you like studying in a library? Why or why not?"]},{"title":"咖啡店","scene":"☕🍰 👩‍💻 👨‍💼 🪴","qs":["Please describe what the people are doing in the café.","Why might people choose to work in a café?","Where do you like to study or work? Why?"]},{"title":"公園運動","scene":"🌳🏃‍♀️🚴 🧘 🐕","qs":["Please describe the activities in the park.","What are the benefits of exercising outdoors?","How often do you exercise, and what do you usually do?"]},{"title":"搬家","scene":"📦🚚 👨 👩 🛋️","qs":["Please describe what the people are doing.","What problems might they have while moving?","Have you ever moved to a new place? How did you feel?"]},{"title":"火車站","scene":"🚉🚆 🧳 👨‍👩‍👧 ⏰","qs":["Please describe the people at the station.","What might they be worried about?","Do you prefer traveling by train or by car? Why?"]},{"title":"傳統市場","scene":"🥬🍅🐟 🧓 👩 🛒","qs":["Please describe the scene at the market.","Why do some people prefer traditional markets to supermarkets?","Where does your family usually buy food?"]},{"title":"校慶活動","scene":"🎪🎈🎤 🧑‍🎓🧑‍🎓 👏","qs":["Please describe the event.","How might the students feel about it?","What school activity do you remember most? Why?"]}]}};
+/*BANK_END*/
+for(const lv in BANK)for(const k in BANK[lv])DATA[lv].tasks[k].items=BANK[lv][k];
 
 /* ===== AI 出題設定 =====
    把 Cloudflare Worker 的網址貼在這裡（做法見 worker.js 開頭說明）。
@@ -122,14 +129,23 @@ function menu(lv){
 }
 
 async function start(k){
-  const t=DATA[S.level].tasks[k];S.task=k;S.i=0;S.ai=false;
+  const t=DATA[S.level].tasks[k];S.task=k;S.ai=false;
   if(S.src==="ai"&&AI_ENDPOINT){
     app.innerHTML=`<p class="stage" style="margin-top:40px">AI 正在出題，約需 5–15 秒…</p>`;
     const items=await aiItems(k,t);
-    if(items){S.items=items;S.ai=true;return question()}
+    if(items){S.bank=items;S.items=items;S.set=0;S.i=0;S.ai=true;return question()}
     S.note="AI 暫時無法出題，已改用內建題庫。";
   }
-  S.items=[...t.items].sort(()=>Math.random()-.5);question();
+  S.bank=t.items;sets();
+}
+function getDone(){try{return JSON.parse(localStorage.getItem("gept_done_"+S.name))||{}}catch(e){return {}}}
+function markDone(){try{const d=getDone(),k=S.level+"|"+S.task;d[k]=[...new Set([...(d[k]||[]),S.set])];localStorage.setItem("gept_done_"+S.name,JSON.stringify(d))}catch(e){}}
+function sets(){
+  stop();const t=T(),n=Math.ceil(S.bank.length/4),dn=getDone()[S.level+"|"+S.task]||[],nm=(t.names||"").split("|");
+  app.innerHTML=`<button class="back" id="bk">‹ ${DATA[S.level].name}口說</button><h1>${t.name}</h1><p class="mute">共 ${n} 回，每回 4 題。你已完成 ${dn.length} 回。</p>
+  <div class="sets">${Array.from({length:n},(_,i)=>`<button class="choice ${dn.includes(i)?"dn":""}" data-n="${i}"><b>第 ${i+1} 回${dn.includes(i)?" ✓":""}</b>${nm[i]?`<small>${esc(nm[i])}</small>`:""}</button>`).join("")}</div>`;
+  $("bk").onclick=()=>menu(S.level);
+  app.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{S.set=+b.dataset.n;S.items=S.bank.slice(S.set*4,S.set*4+4);S.i=0;question()});
 }
 async function aiItems(k,t){
   try{
@@ -142,7 +158,7 @@ async function aiItems(k,t){
 function clean(a,mode){
   if(!Array.isArray(a))return null;
   const s=x=>typeof x==="string"&&x.trim()?x.trim().slice(0,600):null,out=[];
-  for(const o of a.slice(0,8)){
+  for(const o of a.slice(0,80)){
     if(!o||typeof o!=="object")continue;
     if(mode==="read"){const t=s(o.t);if(t)out.push({t})}
     else if(mode==="listen"){const q=s(o.q);if(q)out.push({q,ref:s(o.ref)||undefined,sec:o.sec===15||o.sec===30?o.sec:undefined})}
@@ -158,11 +174,11 @@ function question(){
   if(t.mode==="listen")body=`<p class="mute">按「開始」後會播放題目${t.plays>1?"（播放 "+t.plays+" 次）":""}，題目文字不會顯示。請把手機音量調大。</p>`;
   if(t.mode==="picture")body=`<h2>${it.img?"":esc(it.title)}</h2>${it.img?`<img src="${esc(it.img)}" alt="" style="max-width:100%;border-radius:10px">`:`<div class="scene" aria-label="${esc(it.title)}">${esc(it.scene)}</div>`}<ol class="en">${it.qs.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>`;
   const note=S.note;S.note="";
-  app.innerHTML=`<button class="back" id="bk">‹ ${DATA[S.level].name}・${t.name}</button>
+  app.innerHTML=`<button class="back" id="bk">‹ ${DATA[S.level].name}・${t.name}${S.ai?"":"・第"+(S.set+1)+"回"}</button>
   <div class="bar"><i style="width:${(S.i/n)*100}%"></i></div><p class="mute">第 ${S.i+1} / ${n} 題・${esc(S.name)}${S.ai?"・AI 出題":""}</p>${note?`<p class="mute">${esc(note)}</p>`:""}
   <div class="card">${body}<div class="ring hide" id="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="58" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="arc" cx="66" cy="66" r="58" fill="none" stroke="var(--main)" stroke-width="10" stroke-linecap="round" stroke-dasharray="364.4" stroke-dashoffset="0"/></svg><div class="n" id="num"></div></div>
   <p class="stage" id="stage"></p><div class="ref hide" id="fb"></div><div class="row" id="ctl"><button class="btn" id="go">開始</button></div></div><div id="after"></div>`;
-  $("bk").onclick=()=>menu(S.level);$("go").onclick=run;
+  $("bk").onclick=()=>S.ai?menu(S.level):sets();$("go").onclick=run;
 }
 
 function countdown(sec,label){
@@ -231,14 +247,15 @@ function finish(id){
   const fname=[S.name,DATA[S.level].name,t.name,S.i+1].join("_").replace(/[\\/:*?"<>|\s]/g,"")+(mt.includes("mp4")?".m4a":".webm");
   $("ring").classList.add("hide");$("stage").textContent="錄音完成";
   const last=S.i>=S.items.length-1;
-  log({name:S.name,level:DATA[S.level].name,task:t.name,item:String(it.q||it.t||it.title||"").slice(0,80),sec:Math.round((Date.now()-S.t0)/1000)});
+  if(last&&!S.ai)markDone();
+  log({name:S.name,level:DATA[S.level].name,task:t.name,set:S.ai?0:S.set+1,done:last?1:0,item:String(it.q||it.t||it.title||"").slice(0,80),sec:Math.round((Date.now()-S.t0)/1000)});
   const reveal=t.mode==="listen"?`<div class="ref"><b>題目：</b>${esc(it.q)}${it.ref?`<br><b>參考回答：</b>${esc(it.ref)}`:""}</div>`:"";
   $("ctl").innerHTML="";
   $("after").innerHTML=`<div class="card"><b>聽聽自己的錄音</b><audio controls src="${url}"></audio>${reveal}
   <p style="margin-top:14px"><b>自我檢查</b></p>${t.check.map(c=>`<label class="ck"><input type="checkbox"> <span>${c}</span></label>`).join("")}
   <div class="row"><button class="btn alt" id="rt">再試一次</button><a class="btn alt" download="${esc(fname)}" href="${url}">下載錄音</a>${last?`<button class="btn" id="dn">完成練習</button>`:`<button class="btn" id="nx">下一題</button>`}</div></div>`;
   $("rt").onclick=question;
-  if(last)$("dn").onclick=()=>menu(S.level);else $("nx").onclick=()=>{S.i++;question()};
+  if(last)$("dn").onclick=()=>S.ai?menu(S.level):sets();else $("nx").onclick=()=>{S.i++;question()};
 }
 function stop(){
   S.runId++;clearInterval(S.tick);
