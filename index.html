@@ -80,6 +80,8 @@ const DATA = {
    把 Cloudflare Worker 的網址貼在這裡（做法見 worker.js 開頭說明）。
    留空代表只使用上面的內建題庫。請不要把 API 金鑰寫在這個檔案裡。 */
 const AI_ENDPOINT="";
+/* 練習紀錄：貼上 Google Apps Script 網址（見 tracking-apps-script.gs），留空則不記錄 */
+const LOG_URL="";
 
 const app=document.getElementById("app");
 const $=id=>document.getElementById(id);
@@ -214,7 +216,7 @@ async function run(){
   S.chunks=[];S.rec=new MediaRecorder(S.stream);
   S.rec.ondataavailable=e=>S.chunks.push(e.data);
   S.rec.onstop=()=>finish(id);
-  S.rec.start();
+  S.rec.start();S.t0=Date.now();
   $("ctl").innerHTML=`<button class="btn rec" id="st">錄音中・按此停止</button>`;
   $("st").onclick=()=>{S.skip&&S.skip()};
   await countdown(sec,"請開始說話");
@@ -229,6 +231,7 @@ function finish(id){
   const fname=[S.name,DATA[S.level].name,t.name,S.i+1].join("_").replace(/[\\/:*?"<>|\s]/g,"")+(mt.includes("mp4")?".m4a":".webm");
   $("ring").classList.add("hide");$("stage").textContent="錄音完成";
   const last=S.i>=S.items.length-1;
+  log({name:S.name,level:DATA[S.level].name,task:t.name,item:String(it.q||it.t||it.title||"").slice(0,80),sec:Math.round((Date.now()-S.t0)/1000)});
   const reveal=t.mode==="listen"?`<div class="ref"><b>題目：</b>${esc(it.q)}${it.ref?`<br><b>參考回答：</b>${esc(it.ref)}`:""}</div>`:"";
   $("ctl").innerHTML="";
   $("after").innerHTML=`<div class="card"><b>聽聽自己的錄音</b><audio controls src="${url}"></audio>${reveal}
@@ -243,7 +246,16 @@ function stop(){
   if(S.rec&&S.rec.state==="recording"){S.rec.onstop=null;S.rec.stop()}
   if(S.stream){S.stream.getTracks().forEach(x=>x.stop());S.stream=null}
 }
-home();
+function log(o){if(!LOG_URL)return;try{fetch(LOG_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(o)})}catch(e){}}
+/* 讀取每週自動更新的 questions.json；讀不到就用上面的內建題庫 */
+async function loadBank(){
+  try{
+    const r=await fetch("questions.json?v="+Date.now());if(!r.ok)return;
+    const j=await r.json();
+    for(const lv in j)for(const k in j[lv]){const t=DATA[lv]&&DATA[lv].tasks[k];if(!t)continue;const it=clean(j[lv][k],t.mode);if(it)t.items=it}
+  }catch(e){}
+}
+loadBank().then(home);
 </script>
 </body>
 </html>
