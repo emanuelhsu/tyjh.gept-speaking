@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全民英檢口說自主練習</title>
+<style>
+:root{--bg:#f2f5fa;--card:#fff;--ink:#10203a;--mute:#5b6b85;--line:#d8e0ee;--main:#0f766e;--main-ink:#fff;--rec:#e5484d;--soft:#e3f1ef}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1624;--card:#15233a;--ink:#e8eefb;--mute:#93a3c0;--line:#27395a;--main:#2dd4bf;--main-ink:#06201d;--rec:#ff6b70;--soft:#12363a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.6rem;margin:12px 0 4px}
+h2{font-size:1.25rem;margin:8px 0}
+p{margin:6px 0}.mute{color:var(--mute);font-size:.92rem}
+.grid{display:grid;gap:12px;margin-top:16px}
+.choice{display:block;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;font:inherit;cursor:pointer}
+.choice:hover,.choice:focus-visible{border-color:var(--main);outline:none}
+.choice b{display:block;font-size:1.1rem}
+.choice span{color:var(--mute);font-size:.9rem}
+.back{background:none;border:0;color:var(--mute);font:inherit;cursor:pointer;padding:6px 0}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}
+.en{font-size:1.15rem;line-height:1.8}
+.btn{background:var(--main);color:var(--main-ink);border:0;border-radius:12px;padding:12px 22px;font:inherit;font-weight:700;cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.rec{background:var(--rec);color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.ring{position:relative;width:132px;height:132px;margin:10px auto}
+.ring svg{transform:rotate(-90deg)}
+.ring .n{position:absolute;inset:0;display:grid;place-items:center;font-size:2rem;font-weight:700}
+.stage{text-align:center;font-weight:700}
+.scene{font-size:3rem;text-align:center;line-height:1.4}
+label.ck{display:flex;gap:10px;align-items:flex-start;margin:6px 0;cursor:pointer}
+audio{width:100%;margin-top:10px}
+.ref{background:var(--soft);border-radius:10px;padding:10px 14px;margin-top:10px}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px}.bar i{display:block;height:100%;background:var(--main);border-radius:3px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+/* ===== 題庫：直接改這裡就能新增題目 =====
+   mode: read=朗讀 / listen=聽題目後回答 / picture=看圖
+   prep=準備秒數, answer=作答秒數(題目可用 sec 覆蓋), plays=題目播放次數
+   看圖題可加 img:"images/xxx.png" 使用真的圖片；沒有 img 時顯示 scene 的表情符號
+   提醒：請使用自己原創的題目，不要放真題或出版社題本。 */
+const DATA = {
+ elementary:{name:"初級",desc:"基礎句型、簡短回答",tasks:{
+  repeat:{name:"複誦",desc:"聽一句，馬上說一遍",mode:"listen",prep:0,answer:12,plays:1,showAfter:true,
+   check:["句子完整，沒有漏字","語調自然"],
+   items:[{q:"I go to school by bus every day."},{q:"My brother is playing basketball in the park."},{q:"Can you help me with my homework?"},{q:"We will visit our grandmother next Sunday."}]},
+  read:{name:"朗讀",desc:"默讀後大聲念出短文",mode:"read",prep:30,answer:60,
+   check:["發音清楚","在句號、逗號有停頓","念錯能繼續，不卡住"],
+   items:[{t:"Tom lives in a small town. Every morning, he walks to school with his friend Amy. They like to talk about games and music."},{t:"Last Saturday, my family went to the zoo. We saw elephants, monkeys, and birds. I took many pictures and had a great day."}]},
+  qa:{name:"回答問題",desc:"聽問題，用完整句回答",mode:"listen",prep:0,answer:15,plays:2,
+   check:["有直接回答問題","用完整的句子","時態正確（現在、過去、未來）"],
+   items:[{q:"What do you usually eat for breakfast?",ref:"I usually eat an egg sandwich and drink milk."},{q:"Where did you go last weekend?",ref:"I went to the night market with my family."},{q:"What will you do tomorrow?",ref:"I will clean my room and then play basketball."},{q:"Who is your best friend?",ref:"My best friend is Amy. She is kind and funny."}]},
+  pic:{name:"看圖說話",desc:"看圖片，回答問題",mode:"picture",prep:20,answer:40,
+   check:["每個問題都有回答","用現在進行式描述動作","說的內容和圖片相符"],
+   items:[{scene:"🌳🧒⚽ 🐕 ☀️",title:"公園裡",qs:["What are the children doing?","What is the weather like?","Do you like playing in the park? Why?"]},{scene:"🛒🍎🥛 👩 👦",title:"超市裡",qs:["Where are the woman and the boy?","What are they buying?","What do you usually buy at the supermarket?"]}]}
+ }},
+ intermediate:{name:"中級",desc:"延伸回答、看圖敘述",tasks:{
+  read:{name:"朗讀短文",desc:"默讀 1 分鐘，2 分鐘內念完",mode:"read",prep:60,answer:120,
+   check:["發音清楚、重音大致正確","句子斷在對的地方","語速穩定，不過快","念錯一個字可以直接接著念"],
+   items:[{t:"More and more people in big cities are choosing to ride bicycles to work. It is cheaper than taking a taxi, and it is also good for the environment. However, some riders worry about safety because there are not enough bike lanes in many areas."},{t:"Learning a new language takes time, but it can open many doors. People who speak more than one language often find it easier to travel, make friends, and get better jobs. The key is to practice a little every day instead of studying for hours once a week."}]},
+  qa:{name:"回答問題",desc:"聽問題；前 5 題 15 秒、後 5 題 30 秒",mode:"listen",prep:0,answer:15,plays:2,
+   check:["第一句直接回答問題","第二句補理由或細節","句子完整、用詞自然","時間內說完，不重複同一句"],
+   items:[{q:"What do you usually do to relax after work or school?",ref:"I usually listen to music. It helps me forget stress from the day."},{q:"Do you prefer to study alone or with others?",ref:"I prefer studying with others because we can explain things to each other."},{q:"How do you usually go to work or school?",ref:"I take the MRT. It is fast and I can read on the way."},
+        {q:"Some people think children should learn to cook. What do you think?",sec:30,ref:"I agree. Cooking teaches children to be independent. For example, they can make simple meals when parents are busy. It is also a good way to spend time with family."},
+        {q:"What was the most memorable trip you have ever taken?",sec:30,ref:"My most memorable trip was to Hualien last summer. We hiked in Taroko Gorge and the views were amazing. I would love to go back again."},
+        {q:"If you could change one thing about your town or city, what would it be?",sec:30,ref:"I would build more parks. Right now there are few places for people to exercise or relax, especially for older people."}]},
+  pic:{name:"看圖敘述",desc:"看圖，依問題順序說明",mode:"picture",prep:30,answer:90,
+   check:["依問題順序回答","描述有根據圖片（事實）","推測用 maybe / probably","個人看法有說理由"],
+   items:[{scene:"🏢🚌🌧️ 🧑‍💼☂️ 🧑‍🎓📱",title:"下雨的公車站",qs:["Please describe what the people are doing at the bus stop.","What might happen next?","What do you usually do when it rains and you have to go out?"]},{scene:"📚🪑 👩‍🏫 🧑‍🎓🧑‍🎓 💻",title:"圖書館",qs:["Please describe the scene in the library.","Why do you think the students are working together?","Do you like studying in a library? Why or why not?"]}]}
+ }}
+};
+
+const app=document.getElementById("app");
+let S={level:null,task:null,items:[],i:0,stream:null,rec:null,chunks:[],tick:null,runId:0};
+const $=id=>document.getElementById(id);
+
+function home(){
+  stop();S={...S,level:null,task:null};
+  app.innerHTML=`<h1>全民英檢口說練習</h1><p class="mute">選擇級數，再選練習項目。錄音只留在你的手機或電腦，不會上傳。</p>
+  <div class="grid">${Object.entries(DATA).map(([k,v])=>`<button class="choice" data-lv="${k}"><b>${v.name}</b><span>${v.desc}</span></button>`).join("")}</div>`;
+  app.querySelectorAll("[data-lv]").forEach(b=>b.onclick=()=>menu(b.dataset.lv));
+}
+function menu(lv){
+  stop();S.level=lv;const L=DATA[lv];
+  app.innerHTML=`<button class="back" id="bk">‹ 回到選級數</button><h1>${L.name}口說</h1><p class="mute">選一個項目開始練習</p>
+  <div class="grid">${Object.entries(L.tasks).map(([k,t])=>`<button class="choice" data-t="${k}"><b>${t.name}</b><span>${t.desc}（${t.items.length} 題）</span></button>`).join("")}</div>`;
+  $("bk").onclick=home;
+  app.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>start(b.dataset.t));
+}
+function start(k){
+  const t=DATA[S.level].tasks[k];S.task=k;S.items=[...t.items].sort(()=>Math.random()-.5);S.i=0;question();
+}
+function T(){return DATA[S.level].tasks[S.task]}
+
+function question(){
+  stop();const t=T(),it=S.items[S.i],n=S.items.length;
+  let body="";
+  if(t.mode==="read")body=`<p class="mute">先默讀，準備時間到了就開始朗讀。</p><p class="en">${it.t}</p>`;
+  if(t.mode==="listen")body=`<p class="mute">按「開始」後會播放題目${t.plays>1?"（播放 "+t.plays+" 次）":""}，題目文字不會顯示。</p>`;
+  if(t.mode==="picture")body=`<h2>${it.img?"":it.title}</h2>${it.img?`<img src="${it.img}" alt="" style="max-width:100%;border-radius:10px">`:`<div class="scene" aria-label="${it.title}">${it.scene}</div>`}<ol class="en">${it.qs.map(q=>`<li>${q}</li>`).join("")}</ol>`;
+  app.innerHTML=`<button class="back" id="bk">‹ ${DATA[S.level].name}・${t.name}</button>
+  <div class="bar"><i style="width:${(S.i/n)*100}%"></i></div><p class="mute">第 ${S.i+1} / ${n} 題</p>
+  <div class="card">${body}<div class="ring hide" id="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="58" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="arc" cx="66" cy="66" r="58" fill="none" stroke="var(--main)" stroke-width="10" stroke-linecap="round" stroke-dasharray="364.4" stroke-dashoffset="0"/></svg><div class="n" id="num"></div></div>
+  <p class="stage" id="stage"></p><div class="row" id="ctl"><button class="btn" id="go">開始</button></div></div><div id="after"></div>`;
+  $("bk").onclick=()=>menu(S.level);$("go").onclick=run;
+}
+
+function countdown(sec,label,onTick){
+  return new Promise(res=>{
+    const id=S.runId;let left=sec;$("ring").classList.remove("hide");$("stage").textContent=label;
+    const draw=()=>{$("num").textContent=left;$("arc").style.strokeDashoffset=364.4*(1-left/sec)};draw();
+    S.tick=setInterval(()=>{if(id!==S.runId){clearInterval(S.tick);return}left--;draw();if(left<=0){clearInterval(S.tick);res(true)}},1000);
+    S.skip=()=>{clearInterval(S.tick);res(false)};
+  });
+}
+function speak(text,times){
+  return new Promise(res=>{
+    if(!("speechSynthesis" in window)){res();return}
+    let c=0;const once=()=>{const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.9;u.onend=()=>{c++;c<times?setTimeout(once,1500):res()};u.onerror=()=>res();speechSynthesis.speak(u)};
+    speechSynthesis.cancel();once();
+  });
+}
+async function run(){
+  const id=++S.runId,t=T(),it=S.items[S.i];
+  const sec=it.sec||t.answer;
+  try{S.stream=await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){$("stage").textContent="無法使用麥克風。請允許瀏覽器使用麥克風後再試一次。";return}
+  $("ctl").innerHTML="";
+  if(t.mode==="listen"){$("stage").textContent="請聽題目…";await speak(it.q,t.plays);if(id!==S.runId)return}
+  if(t.prep>0){$("ctl").innerHTML=`<button class="btn alt" id="sk">跳過準備</button>`;$("sk").onclick=()=>S.skip&&S.skip();await countdown(t.prep,"準備中",0);if(id!==S.runId)return}
+  S.chunks=[];S.rec=new MediaRecorder(S.stream);
+  S.rec.ondataavailable=e=>S.chunks.push(e.data);
+  S.rec.onstop=()=>finish(id);
+  S.rec.start();
+  $("ctl").innerHTML=`<button class="btn rec" id="st">錄音中・按此停止</button>`;
+  $("st").onclick=()=>{S.skip&&S.skip()};
+  await countdown(sec,"請開始說話",0);
+  if(id!==S.runId)return;
+  if(S.rec&&S.rec.state==="recording")S.rec.stop();
+}
+function finish(id){
+  if(S.stream){S.stream.getTracks().forEach(x=>x.stop());S.stream=null}
+  if(id!==S.runId)return;
+  clearInterval(S.tick);
+  const t=T(),it=S.items[S.i],url=URL.createObjectURL(new Blob(S.chunks,{type:S.rec.mimeType||"audio/webm"}));
+  $("ring").classList.add("hide");$("stage").textContent="錄音完成";
+  const last=S.i>=S.items.length-1;
+  const reveal=t.mode==="listen"?`<div class="ref"><b>題目：</b>${it.q}${it.ref?`<br><b>參考回答：</b>${it.ref}`:""}</div>`:"";
+  $("ctl").innerHTML="";
+  $("after").innerHTML=`<div class="card"><b>聽聽自己的錄音</b><audio controls src="${url}"></audio>${reveal}
+  <p style="margin-top:14px"><b>自我檢查</b></p>${t.check.map(c=>`<label class="ck"><input type="checkbox"> <span>${c}</span></label>`).join("")}
+  <div class="row"><button class="btn alt" id="rt">再試一次</button>${last?`<button class="btn" id="dn">完成練習</button>`:`<button class="btn" id="nx">下一題</button>`}</div></div>`;
+  $("rt").onclick=question;
+  if(last)$("dn").onclick=()=>menu(S.level);else $("nx").onclick=()=>{S.i++;question()};
+}
+function stop(){
+  S.runId++;clearInterval(S.tick);
+  if("speechSynthesis" in window)speechSynthesis.cancel();
+  if(S.rec&&S.rec.state==="recording"){S.rec.onstop=null;S.rec.stop()}
+  if(S.stream){S.stream.getTracks().forEach(x=>x.stop());S.stream=null}
+}
+home();
+</script>
+</body>
+</html>
