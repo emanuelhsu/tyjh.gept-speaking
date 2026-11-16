@@ -34,7 +34,7 @@ label.ck{display:flex;gap:10px;align-items:flex-start;margin:6px 0;cursor:pointe
 audio{width:100%;margin-top:10px}
 .ref{background:var(--soft);border-radius:10px;padding:10px 14px;margin-top:10px}
 .bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px}.bar i{display:block;height:100%;background:var(--main);border-radius:3px}
-.hide{display:none}
+.inp{width:100%;font:inherit;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin-top:6px}.hello{display:flex;justify-content:space-between;align-items:center}a.btn{text-decoration:none;display:inline-block}.seg{margin:10px 0}.seg .btn{padding:8px 16px}.hide{display:none}
 </style>
 </head>
 <body>
@@ -76,42 +76,94 @@ const DATA = {
  }}
 };
 
-const app=document.getElementById("app");
-let S={level:null,task:null,items:[],i:0,stream:null,rec:null,chunks:[],tick:null,runId:0};
-const $=id=>document.getElementById(id);
+/* ===== AI 出題設定 =====
+   把 Cloudflare Worker 的網址貼在這裡（做法見 worker.js 開頭說明）。
+   留空代表只使用上面的內建題庫。請不要把 API 金鑰寫在這個檔案裡。 */
+const AI_ENDPOINT="";
 
+const app=document.getElementById("app");
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let S={name:"",src:"bank",level:null,task:null,items:[],i:0,stream:null,rec:null,chunks:[],tick:null,runId:0,note:"",ai:false};
+try{S.name=localStorage.getItem("gept_name")||""}catch(e){}
+const TTS="speechSynthesis" in window;
+let VOICE=null;
+function pickVoice(){if(!TTS)return;const v=speechSynthesis.getVoices();VOICE=v.find(x=>/^en[-_]US/i.test(x.lang))||v.find(x=>/^en/i.test(x.lang))||null}
+if(TTS){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function T(){return DATA[S.level].tasks[S.task]}
+
+function nameScreen(){
+  stop();
+  app.innerHTML=`<h1>全民英檢口說練習</h1><p class="mute">先輸入你的姓名，下載錄音檔時會用到。</p>
+  <div class="card"><label for="nm">姓名</label><input id="nm" class="inp" maxlength="20" autocomplete="name" value="${esc(S.name)}">
+  <div class="row"><button class="btn" id="ok">開始練習</button></div><p class="mute" id="er"></p></div>`;
+  const go=()=>{const v=$("nm").value.trim();if(!v){$("er").textContent="請輸入姓名";return}S.name=v;try{localStorage.setItem("gept_name",v)}catch(e){}home()};
+  $("ok").onclick=go;$("nm").onkeydown=e=>{if(e.key==="Enter")go()};
+}
 function home(){
-  stop();S={...S,level:null,task:null};
-  app.innerHTML=`<h1>全民英檢口說練習</h1><p class="mute">選擇級數，再選練習項目。錄音只留在你的手機或電腦，不會上傳。</p>
+  if(!S.name)return nameScreen();
+  stop();
+  app.innerHTML=`<div class="hello"><h1>Hi, ${esc(S.name)}</h1><button class="back" id="chg">換人</button></div><p class="mute">選擇級數，再選練習項目。錄音只留在你的手機或電腦，不會上傳。</p>
   <div class="grid">${Object.entries(DATA).map(([k,v])=>`<button class="choice" data-lv="${k}"><b>${v.name}</b><span>${v.desc}</span></button>`).join("")}</div>`;
+  $("chg").onclick=nameScreen;
   app.querySelectorAll("[data-lv]").forEach(b=>b.onclick=()=>menu(b.dataset.lv));
 }
 function menu(lv){
   stop();S.level=lv;const L=DATA[lv];
-  app.innerHTML=`<button class="back" id="bk">‹ 回到選級數</button><h1>${L.name}口說</h1><p class="mute">選一個項目開始練習</p>
-  <div class="grid">${Object.entries(L.tasks).map(([k,t])=>`<button class="choice" data-t="${k}"><b>${t.name}</b><span>${t.desc}（${t.items.length} 題）</span></button>`).join("")}</div>`;
+  app.innerHTML=`<button class="back" id="bk">‹ 回到選級數</button><h1>${L.name}口說</h1>
+  ${AI_ENDPOINT?`<div class="row seg"><button class="btn ${S.src==="bank"?"":"alt"}" data-s="bank">內建題庫</button><button class="btn ${S.src==="ai"?"":"alt"}" data-s="ai">AI 新題目</button></div>`:""}
+  <p class="mute">選一個項目開始練習</p>
+  <div class="grid">${Object.entries(L.tasks).map(([k,t])=>`<button class="choice" data-t="${k}"><b>${t.name}</b><span>${t.desc}</span></button>`).join("")}</div>`;
   $("bk").onclick=home;
+  app.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{S.src=b.dataset.s;menu(lv)});
   app.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>start(b.dataset.t));
 }
-function start(k){
-  const t=DATA[S.level].tasks[k];S.task=k;S.items=[...t.items].sort(()=>Math.random()-.5);S.i=0;question();
+
+async function start(k){
+  const t=DATA[S.level].tasks[k];S.task=k;S.i=0;S.ai=false;
+  if(S.src==="ai"&&AI_ENDPOINT){
+    app.innerHTML=`<p class="stage" style="margin-top:40px">AI 正在出題，約需 5–15 秒…</p>`;
+    const items=await aiItems(k,t);
+    if(items){S.items=items;S.ai=true;return question()}
+    S.note="AI 暫時無法出題，已改用內建題庫。";
+  }
+  S.items=[...t.items].sort(()=>Math.random()-.5);question();
 }
-function T(){return DATA[S.level].tasks[S.task]}
+async function aiItems(k,t){
+  try{
+    const c=new AbortController(),to=setTimeout(()=>c.abort(),30000);
+    const r=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({level:S.level,task:k,count:5}),signal:c.signal});
+    clearTimeout(to);if(!r.ok)return null;
+    const d=await r.json();return clean(d.items,t.mode);
+  }catch(e){return null}
+}
+function clean(a,mode){
+  if(!Array.isArray(a))return null;
+  const s=x=>typeof x==="string"&&x.trim()?x.trim().slice(0,600):null,out=[];
+  for(const o of a.slice(0,8)){
+    if(!o||typeof o!=="object")continue;
+    if(mode==="read"){const t=s(o.t);if(t)out.push({t})}
+    else if(mode==="listen"){const q=s(o.q);if(q)out.push({q,ref:s(o.ref)||undefined,sec:o.sec===15||o.sec===30?o.sec:undefined})}
+    else{const qs=Array.isArray(o.qs)?o.qs.map(s).filter(Boolean).slice(0,4):[],sc=s(o.scene);if(qs.length&&sc)out.push({scene:sc,title:s(o.title)||"圖片",qs})}
+  }
+  return out.length?out:null;
+}
 
 function question(){
   stop();const t=T(),it=S.items[S.i],n=S.items.length;
   let body="";
-  if(t.mode==="read")body=`<p class="mute">先默讀，準備時間到了就開始朗讀。</p><p class="en">${it.t}</p>`;
-  if(t.mode==="listen")body=`<p class="mute">按「開始」後會播放題目${t.plays>1?"（播放 "+t.plays+" 次）":""}，題目文字不會顯示。</p>`;
-  if(t.mode==="picture")body=`<h2>${it.img?"":it.title}</h2>${it.img?`<img src="${it.img}" alt="" style="max-width:100%;border-radius:10px">`:`<div class="scene" aria-label="${it.title}">${it.scene}</div>`}<ol class="en">${it.qs.map(q=>`<li>${q}</li>`).join("")}</ol>`;
+  if(t.mode==="read")body=`<p class="mute">先默讀，準備時間到了就開始朗讀。</p><p class="en">${esc(it.t)}</p>`;
+  if(t.mode==="listen")body=`<p class="mute">按「開始」後會播放題目${t.plays>1?"（播放 "+t.plays+" 次）":""}，題目文字不會顯示。請把手機音量調大。</p>`;
+  if(t.mode==="picture")body=`<h2>${it.img?"":esc(it.title)}</h2>${it.img?`<img src="${esc(it.img)}" alt="" style="max-width:100%;border-radius:10px">`:`<div class="scene" aria-label="${esc(it.title)}">${esc(it.scene)}</div>`}<ol class="en">${it.qs.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>`;
+  const note=S.note;S.note="";
   app.innerHTML=`<button class="back" id="bk">‹ ${DATA[S.level].name}・${t.name}</button>
-  <div class="bar"><i style="width:${(S.i/n)*100}%"></i></div><p class="mute">第 ${S.i+1} / ${n} 題</p>
+  <div class="bar"><i style="width:${(S.i/n)*100}%"></i></div><p class="mute">第 ${S.i+1} / ${n} 題・${esc(S.name)}${S.ai?"・AI 出題":""}</p>${note?`<p class="mute">${esc(note)}</p>`:""}
   <div class="card">${body}<div class="ring hide" id="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="58" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="arc" cx="66" cy="66" r="58" fill="none" stroke="var(--main)" stroke-width="10" stroke-linecap="round" stroke-dasharray="364.4" stroke-dashoffset="0"/></svg><div class="n" id="num"></div></div>
-  <p class="stage" id="stage"></p><div class="row" id="ctl"><button class="btn" id="go">開始</button></div></div><div id="after"></div>`;
+  <p class="stage" id="stage"></p><div class="ref hide" id="fb"></div><div class="row" id="ctl"><button class="btn" id="go">開始</button></div></div><div id="after"></div>`;
   $("bk").onclick=()=>menu(S.level);$("go").onclick=run;
 }
 
-function countdown(sec,label,onTick){
+function countdown(sec,label){
   return new Promise(res=>{
     const id=S.runId;let left=sec;$("ring").classList.remove("hide");$("stage").textContent=label;
     const draw=()=>{$("num").textContent=left;$("arc").style.strokeDashoffset=364.4*(1-left/sec)};draw();
@@ -121,26 +173,51 @@ function countdown(sec,label,onTick){
 }
 function speak(text,times){
   return new Promise(res=>{
-    if(!("speechSynthesis" in window)){res();return}
-    let c=0;const once=()=>{const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.9;u.onend=()=>{c++;c<times?setTimeout(once,1500):res()};u.onerror=()=>res();speechSynthesis.speak(u)};
-    speechSynthesis.cancel();once();
+    if(!TTS){res(false);return}
+    let c=0,done=false;
+    const fin=ok=>{if(!done){done=true;res(ok)}};
+    const once=()=>{
+      const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.9;u.volume=1;if(VOICE)u.voice=VOICE;
+      let h=false;
+      const next=()=>{if(h)return;h=true;clearTimeout(guard);c++;c<times?setTimeout(once,1500):fin(true)};
+      const guard=setTimeout(next,(text.split(/\s+/).length*600)+4000);
+      u.onend=next;u.onerror=()=>{if(h)return;h=true;clearTimeout(guard);fin(false)};
+      speechSynthesis.speak(u);
+    };
+    once();
   });
 }
+function micMsg(e){
+  const n=e&&e.name;
+  if(n==="NotAllowedError"||n==="SecurityError")return "麥克風被封鎖了。請在瀏覽器網址列旁的設定中允許麥克風，再重新整理頁面。";
+  if(n==="NotFoundError")return "找不到麥克風，請接上耳機麥克風後重新整理頁面。";
+  if(n==="NotReadableError")return "麥克風正被其他程式使用，請關閉通話或錄音程式後再試。";
+  return "無法使用麥克風，請重新整理頁面再試一次。";
+}
 async function run(){
-  const id=++S.runId,t=T(),it=S.items[S.i];
-  const sec=it.sec||t.answer;
-  try{S.stream=await navigator.mediaDevices.getUserMedia({audio:true})}
-  catch(e){$("stage").textContent="無法使用麥克風。請允許瀏覽器使用麥克風後再試一次。";return}
+  const id=++S.runId,t=T(),it=S.items[S.i],sec=it.sec||t.answer;
+  /* 手機要求「點擊當下」就啟動語音，所以先送出一個無聲的語音來解鎖 */
+  if(TTS&&t.mode==="listen"){const u=new SpeechSynthesisUtterance("a");u.volume=0;speechSynthesis.speak(u)}
   $("ctl").innerHTML="";
-  if(t.mode==="listen"){$("stage").textContent="請聽題目…";await speak(it.q,t.plays);if(id!==S.runId)return}
-  if(t.prep>0){$("ctl").innerHTML=`<button class="btn alt" id="sk">跳過準備</button>`;$("sk").onclick=()=>S.skip&&S.skip();await countdown(t.prep,"準備中",0);if(id!==S.runId)return}
+  try{(await navigator.mediaDevices.getUserMedia({audio:true})).getTracks().forEach(x=>x.stop())}
+  catch(e){$("stage").textContent=micMsg(e);$("ctl").innerHTML=`<button class="btn" id="go">再試一次</button>`;$("go").onclick=run;return}
+  if(id!==S.runId)return;
+  if(t.mode==="listen"){
+    $("stage").textContent="請聽題目…";
+    const ok=await speak(it.q,t.plays);if(id!==S.runId)return;
+    if(!ok){$("fb").classList.remove("hide");$("fb").innerHTML="這個瀏覽器無法播放語音，題目是：<br><b>"+esc(it.q)+"</b>"}
+  }
+  if(t.prep>0){$("ctl").innerHTML=`<button class="btn alt" id="sk">跳過準備</button>`;$("sk").onclick=()=>S.skip&&S.skip();await countdown(t.prep,"準備中");if(id!==S.runId)return}
+  try{S.stream=await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){$("stage").textContent=micMsg(e);return}
+  if(id!==S.runId){S.stream.getTracks().forEach(x=>x.stop());S.stream=null;return}
   S.chunks=[];S.rec=new MediaRecorder(S.stream);
   S.rec.ondataavailable=e=>S.chunks.push(e.data);
   S.rec.onstop=()=>finish(id);
   S.rec.start();
   $("ctl").innerHTML=`<button class="btn rec" id="st">錄音中・按此停止</button>`;
   $("st").onclick=()=>{S.skip&&S.skip()};
-  await countdown(sec,"請開始說話",0);
+  await countdown(sec,"請開始說話");
   if(id!==S.runId)return;
   if(S.rec&&S.rec.state==="recording")S.rec.stop();
 }
@@ -148,20 +225,21 @@ function finish(id){
   if(S.stream){S.stream.getTracks().forEach(x=>x.stop());S.stream=null}
   if(id!==S.runId)return;
   clearInterval(S.tick);
-  const t=T(),it=S.items[S.i],url=URL.createObjectURL(new Blob(S.chunks,{type:S.rec.mimeType||"audio/webm"}));
+  const t=T(),it=S.items[S.i],mt=S.rec.mimeType||"audio/webm",url=URL.createObjectURL(new Blob(S.chunks,{type:mt}));
+  const fname=[S.name,DATA[S.level].name,t.name,S.i+1].join("_").replace(/[\\/:*?"<>|\s]/g,"")+(mt.includes("mp4")?".m4a":".webm");
   $("ring").classList.add("hide");$("stage").textContent="錄音完成";
   const last=S.i>=S.items.length-1;
-  const reveal=t.mode==="listen"?`<div class="ref"><b>題目：</b>${it.q}${it.ref?`<br><b>參考回答：</b>${it.ref}`:""}</div>`:"";
+  const reveal=t.mode==="listen"?`<div class="ref"><b>題目：</b>${esc(it.q)}${it.ref?`<br><b>參考回答：</b>${esc(it.ref)}`:""}</div>`:"";
   $("ctl").innerHTML="";
   $("after").innerHTML=`<div class="card"><b>聽聽自己的錄音</b><audio controls src="${url}"></audio>${reveal}
   <p style="margin-top:14px"><b>自我檢查</b></p>${t.check.map(c=>`<label class="ck"><input type="checkbox"> <span>${c}</span></label>`).join("")}
-  <div class="row"><button class="btn alt" id="rt">再試一次</button>${last?`<button class="btn" id="dn">完成練習</button>`:`<button class="btn" id="nx">下一題</button>`}</div></div>`;
+  <div class="row"><button class="btn alt" id="rt">再試一次</button><a class="btn alt" download="${esc(fname)}" href="${url}">下載錄音</a>${last?`<button class="btn" id="dn">完成練習</button>`:`<button class="btn" id="nx">下一題</button>`}</div></div>`;
   $("rt").onclick=question;
   if(last)$("dn").onclick=()=>menu(S.level);else $("nx").onclick=()=>{S.i++;question()};
 }
 function stop(){
   S.runId++;clearInterval(S.tick);
-  if("speechSynthesis" in window)speechSynthesis.cancel();
+  if(TTS)speechSynthesis.cancel();
   if(S.rec&&S.rec.state==="recording"){S.rec.onstop=null;S.rec.stop()}
   if(S.stream){S.stream.getTracks().forEach(x=>x.stop());S.stream=null}
 }
